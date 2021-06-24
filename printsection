@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# The first argument of the script is the file name.
+input_file=$1
+
+# Using muPDF tools, we get the outline of the pdf.
+outline=$(mutool show "$input_file" outline)
+
+# Using fzf, we allow the user to select multiple chapters.
+selection=$(printf %s "$outline" | fzf -m)
+
+# We find the line numbers of the selected chapters
+printf %s "$selection" |
+  while IFS= read -r line || [ -n "${line}" ]; do
+
+    # current line
+    printf "%s\n" "$line"
+
+    # line number
+    N= echo "${outline}" | awk -f - -v line=$line '/line/{ print NR; exit }'
+    echo $N
+  done
