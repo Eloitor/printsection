@@ -55,21 +55,26 @@ do
 	fist_section_text=$(echo "${outline}" | head -n $first_section | tail -1)
 	first_page=$(echo "$fist_section_text" | grep -oP '(?<=#)\d+' | tail -1)
 
+
+	# Compute last page. (it returns nothing if it is last section)
 	next_section=$((last_section+1))
-        next_section_text=$(echo "${outline}" | head -n $next_section | tail -1)
+	next_section_text=$(echo "${outline}" | sed "${next_section}q;d")
 	last_page=$(echo "$next_section_text" | grep -oP '(?<=#)\d+' | tail -1)
 
 	echo "${first_page}-${last_page}"
-        pdfjam "$input_file" $last_page -q --outfile /dev/stdout | zathura -
+	if [ -n "$last_page" ];
+	then
+          pdfjam "$input_file" $last_page -q --outfile /dev/stdout | zathura -
 
-	while true; do
-    	  read -p "Was this the last page of the section? [Yy/Nn]" yn
-    	  case $yn in
-           [Yy]* ) break;;
-	   [Nn]* ) last_page=$((last_page-1)); break;;
-           * ) echo "Please answer yes or no.";;
-          esac
-        done
+	  while true; do
+    	    read -p "Was this the last page of the section? [Yy/Nn]" yn
+    	    case $yn in
+             [Yy]* ) break;;
+	     [Nn]* ) last_page=$((last_page-1)); break;;
+             * ) echo "Please answer yes or no.";;
+            esac
+          done
+	fi
 	page_intervals="${page_intervals}${first_page}-${last_page},"
 
 done
