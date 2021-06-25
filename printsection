@@ -34,7 +34,7 @@ END             {
                 }
 	')
 
-echo $intervals
+echo "selected sections" $intervals
 
 page_intervals=""
 
@@ -47,7 +47,7 @@ do
 	  *-*)  first_section=$(echo "${line}" | cut -f1 -d-)
 	        last_section=$(echo "${line}" | cut -f2 -d-)
 		;;
-	  *)    fist_sectiion=$line
+	  *)    first_section=$line
 	  	last_section=$line
 	  ;;
 	esac
@@ -59,8 +59,8 @@ do
         next_section_text=$(echo "${outline}" | head -n $next_section | tail -1)
 	last_page=$(echo "$next_section_text" | grep -oP '(?<=#)\d+' | tail -1)
 
-        pdfjam "$input_file" $last_page --outfile /dev/stdout | zathura -
-	echo "hi"
+	echo "${first_page}-${last_page}"
+        pdfjam "$input_file" $last_page -q --outfile /dev/stdout | zathura -
 
 	while true; do
     	  read -p "Was this the last page of the section? [Yy/Nn]" yn
@@ -77,4 +77,8 @@ done
 
 # We get rid of the final comma
 page_intervals=$(echo $page_intervals | sed 's/,$//')
+
 echo $page_intervals
+pdfjam "$input_file" $page_intervals -q --outfile "${input_file}_temp1.pdf"
+briss -s "${input_file}_temp1.pdf" -d "${input_file}_temp2.pdf"
+pdfjam --nup 2x1 --landscape "${input_file}_temp2.pdf" --outfile "${input_file}_ready.pdf" --no-tidy
