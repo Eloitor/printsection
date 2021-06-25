@@ -7,16 +7,71 @@ input_file=$1
 outline=$(mutool show "$input_file" outline)
 
 # Using fzf, we allow the user to select multiple chapters.
-selection=$(printf %s "$outline" | fzf -m)
+selection=$(printf %s "$outline" | fzf -m --layout=reverse --tabstop=2 --no-sort)
 
-# We find the line numbers of the selected chapters
-printf %s "$selection" |
+# For each selected section, we get the line number in $outline, and we sort them
+line_numbers=$( printf %s "$selection" |
   while IFS= read -r line || [ -n "${line}" ]; do
+	N= echo "${outline}" | grep -n "$line" | cut -f1 -d:
+done | sort -n)
 
-    # current line
-    printf "%s\n" "$line"
+# We convert the list of sections into intervals 1,2,3,5 => 1-3, 5
+intervals=$( echo "$line_numbers" | awk '
+NR == 1 {PRE = -1E9 }
+$1 == PRE + 1   {SEQ = 1}
+$1  > PRE + 1   {
+		 if (SEQ) printf "-%d", PRE
+                 printf "%s%d", DL, $1
+                 DL = "\n"
+                 SEQ = 0
+                }
 
-    # line number
-    N= echo "${outline}" | awk -f - -v line=$line '/line/{ print NR; exit }'
-    echo $N
-  done
+                {
+		PREPRE=PRE ; PRE = $1 }
+END             {
+                  if ($1 > PREPRE+1) { printf "\n" }
+                  else { printf "-%d\n", $1 }
+                }
+	')
+
+echo "$intervals"
+
+# For each selected section, we get the line number in $outline, and we sort them
+page_intervals=$( printf %s "$intervals" |
+  while IFS= read -r line || [ -n "${line}" ]; do
+	case $line in
+	  *-*)  first_section=$(echo "${line}" | cut -f1 -d-)
+	        last_section=$(echo "${line}" | cut -f2 -d-)
+		;;
+	  *)    fist_sectiion=$line
+	  	last_section=$line
+	  ;;
+	esac
+
+	fist_section_text=$(echo "${outline}" | head -n $first_section | tail -1)
+	first_page=$(echo "$fist_section_text" | grep -oP '(?<=#)\d+' | tail -1)
+
+	next_section=$((last_section+1))
+        next_section_text=$(echo "${outline}" | head -n $next_section | tail -1)
+	last_page=$(echo "$next_section_text" | grep -oP '(?<=#)\d+' | tail -1)
+
+	pdfjam "$input_file" $last_page --outfile /dev/stdout | zathura -
+
+    	echo "Was this the last page of the section? [Yy/Nn]"
+	#while true; do
+    	#  read -p "Was this the last page of the section? [Yy/Nn]" yn
+    	#  case $yn in
+        #   [Yy]* ) break;;
+	#   [Nn]* ) last_page=$((last_page-1)); break;;
+        #   * ) echo "Please answer yes or no.";;
+        #esac
+	#intervals="${intervals}${first_page}-${last_page},"
+        #done
+
+done)
+
+# We get rid of the final comma
+intervals=$(echo $intervals | sed 's/,$//')
+echo $intervals
+
+echo "$page_intervals"
