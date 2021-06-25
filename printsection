@@ -34,12 +34,16 @@ END             {
                 }
 	')
 
-echo "$page_intervals"
+echo $intervals
+
+page_intervals=""
 
 # For each selected section, we get the line number in $outline, and we sort them
-page_intervals=$( printf %s "$intervals" |
-  while IFS= read -r line || [ -n "${line}" ]; do
-	case $line in
+#page_intervals=$( printf %s "$intervals" |
+
+for line in $intervals
+do
+       case $line in
 	  *-*)  first_section=$(echo "${line}" | cut -f1 -d-)
 	        last_section=$(echo "${line}" | cut -f2 -d-)
 		;;
@@ -56,6 +60,7 @@ page_intervals=$( printf %s "$intervals" |
 	last_page=$(echo "$next_section_text" | grep -oP '(?<=#)\d+' | tail -1)
 
         pdfjam "$input_file" $last_page --outfile /dev/stdout | zathura -
+	echo "hi"
 
 	while true; do
     	  read -p "Was this the last page of the section? [Yy/Nn]" yn
@@ -63,12 +68,12 @@ page_intervals=$( printf %s "$intervals" |
            [Yy]* ) break;;
 	   [Nn]* ) last_page=$((last_page-1)); break;;
            * ) echo "Please answer yes or no.";;
-        esac
-
+          esac
         done
-	printf "${first_page}-${last_page},"
+	page_intervals="${page_intervals}${first_page}-${last_page},"
 
-done)
+done
+
 
 # We get rid of the final comma
 page_intervals=$(echo $page_intervals | sed 's/,$//')
